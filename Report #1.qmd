@@ -1,0 +1,53 @@
+---
+title: "Report #1"
+format: html
+---
+
+## Quarto Document
+
+Quarto enables you to weave together content and executable code into a finished document. Things you write here will show up on the final document.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content (what you're reading right now) and the output of code chunks. You can embed code like this:
+
+```{r}
+library(tidyverse)
+library(RSQLite)
+
+con <- dbConnect(drv = SQLite(), 
+                 dbname = "LIS_database.db", # The file that contains our database
+                 extended_types = T) 
+
+(Patient_table <- tbl(con, "Patient")) 
+
+(J.Linnon <- 
+  Patient_table %>% 
+  filter(HospitalID == "7487648492") %>% 
+  select(PatientId:dq2cd)
+)
+```
+
+Well, that looks really messy, doesn't it? Often time in a Quarto document, you want to run the code, but not necessarily show the code. You can add options 
+
+You can add options to executable code like this below. The code is the same except for the `#| echo: false` code at the very beginning. 
+
+```{r}
+#| echo: false
+library(tidyverse)
+library(RSQLite)
+
+con <- dbConnect(drv = SQLite(), 
+                 dbname = "LIS_database.db", # The file that contains our database
+                 extended_types = T) 
+
+(Patient_table <- tbl(con, "Patient")) 
+
+(J.Linnon <- 
+  Patient_table %>% 
+  filter(HospitalID == "7487648492") %>% 
+  select(PatientId:dq2cd)
+)
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
