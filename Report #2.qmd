@@ -9,6 +9,18 @@ params:
 
 ```{r}
 #| include: false 
+#| eval: false
+# Only run this chunk if packages aren't installed in your R session already.
+
+install.packages(c("rmarkdown", "tidyverse", "RSQLite", "devtools", "kableExtra"))
+
+library(devtools)
+
+install_github("k96nb01/immunogenetr_package")
+```
+
+```{r}
+#| include: false 
 # This line tells the Quarto document not to show the code or the output of this chunk in the final report.
 
 library(tidyverse)

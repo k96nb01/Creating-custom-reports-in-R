@@ -3,6 +3,18 @@ title: "Report #1"
 format: html
 ---
 
+```{r}
+#| include: false 
+#| eval: false
+# Only run this chunk if packages aren't installed in your R session already.
+
+install.packages(c("rmarkdown", "tidyverse", "RSQLite", "devtools", "kableExtra"))
+
+library(devtools)
+
+install_github("k96nb01/immunogenetr_package")
+```
+
 ## Quarto Document
 
 Quarto enables you to weave together content and executable code into a finished document. Things you write here will show up on the final document.
