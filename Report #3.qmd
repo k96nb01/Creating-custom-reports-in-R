@@ -14,6 +14,18 @@ format:
       - right=1in
     fontsize: 11pt
 ---
+```{r}
+#| include: false 
+#| eval: false
+# Only run this chunk if packages aren't installed in your R session already.
+
+install.packages(c("rmarkdown", "tidyverse", "RSQLite", "devtools", "kableExtra"))
+
+library(devtools)
+
+install_github("k96nb01/immunogenetr_package")
+```
+
 
 ```{r}
 #| include: false 
