@@ -28,12 +28,12 @@ con <- dbConnect(drv = SQLite(),
 )
 ```
 
-Well, that looks really messy, doesn't it? Often time in a Quarto document, you want to run the code, but not necessarily show the code. You can add options 
-
-You can add options to executable code like this below. The code is the same except for the `#| echo: false` code at the very beginning. 
+Well, that looks really messy, doesn't it? Often time in a Quarto document, you want to run the code, but not necessarily show the code. You can add options to executable code like this below. The code is the same except for the `#| echo: false` code at the very beginning. 
 
 ```{r}
 #| echo: false
+# This option hides the code from the final document, but shows the output of the code chunk.
+
 library(tidyverse)
 library(RSQLite)
 
@@ -50,4 +50,4 @@ con <- dbConnect(drv = SQLite(),
 )
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+The `#| echo: false` option disables the printing of code (only output is displayed). This Quarto document is still very messy, though, so let's open Report #2 to see how a properly formatted document will look.
