@@ -7,15 +7,13 @@ params:
 
 ## HLA Typing
 
-Quarto enables you to weave together content and executable code into a finished document. Things you write here will show up on the final document.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content (what you're reading right now) and the output of code chunks. You can embed code like this:
-
 ```{r}
+#| include: false 
+# This line tells the Quarto document not to show the code or the output of this chunk in the final report.
+
 library(tidyverse)
 library(RSQLite)
+library(kableExtra)
 
 # Connect to the database.
 con <- dbConnect(drv = SQLite(), 
@@ -29,14 +27,14 @@ con <- dbConnect(drv = SQLite(),
 MRN_patient <- params$MRN_patient
 
 # Pull out the typing info for the patient using the MRN in the parameters.
-(J.Linnon <- 
+(Patient_for_report <- 
   Patient_table %>% 
   filter(HospitalID == MRN_patient) %>% 
   select(A1Cd:dq2cd)
 )
 
 # Pull out the first allele at each locus.
-(typing_1 <- J.Linnon %>% 
+(typing_1 <- Patient_for_report %>% 
   select(contains("1")) %>%  # Select the columns.
   # Rename the columns.
   rename(A = A1Cd) %>% 
@@ -49,8 +47,8 @@ MRN_patient <- params$MRN_patient
     collect # Pull the data into R.
   )
 
-# Pull out the first allele at each locus.
-(typing_2 <- J.Linnon %>% 
+# Pull out the second allele at each locus.
+(typing_2 <- Patient_for_report %>% 
   select(contains("2")) %>%  # Select the columns.
   # Rename the columns.
   rename(A = A2Cd) %>% 
@@ -64,7 +62,27 @@ MRN_patient <- params$MRN_patient
   )
 
 # Place the two alleles on top of each other by binding the rows of the two tables.
-(typing_report <- typing_1 %>% bind_rows(typing_2))
+(typing_report <- typing_1 %>% 
+    bind_rows(typing_2) %>% 
+    mutate(across(A:DQ, ~replace_na(., ""))) # replace the missing "NA" values with blank values so it looks nice on the report.
+    )
+```
+
+```{r}
+#| echo: false
+# This line tells the Quarto document to only show the output, but not the code, from this chunk.
+
+# Output table
+kbl(typing_report, booktabs = TRUE, caption = " Serologic Typing", col.names = c('A', 'B', 'Bw', 'Cw', 'DR', 'DR5X', 'DQ')) %>% # This passes the table made above to the `kable` package, which will output it nicely for the report.
+  kable_styling(full_width = T) %>% # Make the table take up the full width of the page.
+  kable_styling(latex_options = "hold_position") # Make the table appear at the top of the page where we want it.
+```
+
+```{r}
+#| include: false
+
+# It's always a good idea to close the connection to the database when you're done.
+dbDisconnect(con)
 ```
 
 
