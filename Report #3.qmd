@@ -2,8 +2,8 @@
 title: "Report #3"
 subtitle: "DSA graphing report"
 params:
-  MRN_patient: "7487648492"
-  First_name_donor: "AJG5407"
+  MRN_patient: "6649842394"
+  First_name_donor: "Brian"
 format:
   pdf:
     pdf-engine: xelatex
@@ -15,15 +15,15 @@ format:
     fontsize: 11pt
 ---
 
-## HLA Typing
-
 ```{r}
 #| include: false 
 # This line tells the Quarto document not to show the code or the output of this chunk in the final report.
 
+# Libraries we need for this report.
 library(tidyverse)
 library(RSQLite)
 library(kableExtra)
+library(immunogenetr)
 
 # Connect to the database.
 con <- dbConnect(drv = SQLite(), 
@@ -40,52 +40,104 @@ MRN_patient <- params$MRN_patient
 (Patient_for_report <- 
   Patient_table %>% 
   filter(HospitalID == MRN_patient) %>% 
-  select(A1Cd:dq2cd)
+  select(PatientId, firstnm, lastnm, A1Cd:dq2cd) %>% 
+    collect()
+  )
+
+#Extracting the PatientId from the database, which will allow for linking to the donor
+Patient_Id <- Patient_for_report$PatientId
+
+#Connecting to the RelatedPatient table in the database
+(RelatedPatient <- tbl(con, "RelatedPatient") %>% 
+  select(CaseId, RelatedPatientID, RelationshipTypeCd))
+
+#Connecting to the Patient table again, but this time to get the donor info out (donors are also stored in the Patient table in the database)
+(Donor <- tbl(con, "Patient") %>% 
+  select(PatientId, firstnm, lastnm, A1Cd:dq2cd)
+  )
+
+#Connecting to the PatientCase table, and linking to the RelatedPatient and Donor tables to get donors
+(PatientCase <- tbl(con, "PatientCase") %>% 
+  select(PatientId, CaseId) %>% 
+  filter(PatientId == Patient_Id) %>% 
+  left_join(RelatedPatient, by = "CaseId") %>% 
+  left_join(Donor, by = c("RelatedPatientID" = "PatientId")) %>% 
+  collect
 )
 
-# Pull out the first allele at each locus.
-(typing_1 <- Patient_for_report %>% 
-  select(contains("1")) %>%  # Select the columns.
-  # Rename the columns.
-  rename(A = A1Cd) %>% 
-  rename(B = B1Cd) %>% 
-  rename(Bw = BW1Cd) %>% 
-  rename(Cw = Cw1Cd) %>%
-  rename(DR = DR1Cd) %>%
-  rename("DR51/52/53" = drw1cd) %>% 
-  rename(DQ = dq1cd) %>% 
-    collect # Pull the data into R.
+#Linking donors to the patient record, and selecting for the donor of interest
+(Case <- Patient_for_report %>% 
+  left_join(PatientCase, by = "PatientId", suffix = c(".recipient", ".donor")) %>% 
+  filter(firstnm.donor == params$First_name_donor)
   )
-
-# Pull out the second allele at each locus.
-(typing_2 <- Patient_for_report %>% 
-  select(contains("2")) %>%  # Select the columns.
-  # Rename the columns.
-  rename(A = A2Cd) %>% 
-  rename(B = B2Cd) %>% 
-  rename(Bw = Bw2Cd) %>% 
-  rename(Cw = Cw2Cd) %>%
-  rename(DR = DR2Cd) %>%
-  rename("DR51/52/53" = drw2cd) %>% 
-  rename(DQ = dq2cd) %>% 
-    collect # Pull the data into R.
-  )
-
-# Place the two alleles on top of each other by binding the rows of the two tables.
-(typing_report <- typing_1 %>% 
-    bind_rows(typing_2) %>% 
-    mutate(across(A:DQ, ~replace_na(., ""))) # replace the missing "NA" values with blank values so it looks nice on the report.
-    )
 ```
 
 ```{r}
-#| echo: false
-# This line tells the Quarto document to only show the output, but not the code, from this chunk.
+#| include: false
+#Get information on SAB tests
 
-# Output table
-kbl(typing_report, booktabs = TRUE, caption = " Serologic Typing", col.names = c('A', 'B', 'Bw', 'Cw', 'DR', 'DR5X', 'DQ')) %>% # This passes the table made above to the `kable` package, which will output it nicely for the report.
-  kable_styling(full_width = T) %>% # Make the table take up the full width of the page.
-  kable_styling(latex_options = "hold_position") # Make the table appear at the top of the page where we want it.
+#Connecting to the Test table in the database.
+(Test <- tbl(con, "Test") %>% 
+  select(TestId:TestTypeCd, TestMethodCd)
+)
+
+#Connecting to the TestDetail table in the database.
+(TestDetail <- tbl(con, "TestDetail") %>% 
+  select(TestId, TestDetailTypeCd, SingleAgBead, SingleAgRaw, SingleAgNormalized, SingleAgSpecAbbr, SingleAgSpecificity)
+)
+
+#Connecting to the Sample table in the database.
+(Sample <- tbl(con, "Sample") %>% 
+  select(PatientId, SampleID, SampleDt) %>% 
+  rename(SampleId = SampleID) %>% 
+  #Filter for the samples for this patient.
+  filter(PatientId == Patient_Id) %>% 
+  left_join(Test, by = "SampleId") %>% 
+  filter(TestMethodCd == "Class I SAB" | TestMethodCd == "Class II SAB") %>% 
+  left_join(TestDetail, by = "TestId") %>% 
+  filter(!is.na(SingleAgNormalized)) %>% 
+  collect %>% 
+  mutate(SingleAgSpecAbbr = HLA_validate(SingleAgSpecAbbr)) %>% 
+  HLA_prefix_add(SingleAgSpecAbbr) %>% 
+  mutate(SAB_spec_regex = str_c(SingleAgSpecAbbr, "(\\+|\\^|$)"))
+)
+```
+
+```{r}
+#| include: false
+
+# Join the typing table to the SAB results and filter for DSAs.
+(DSA_table <- Case %>% 
+   mutate(GLstring_donor = HLA_columns_to_GLstring(., c(A1Cd.donor:dq2cd.donor), suffix_to_remove = "cd.donor")) %>% # Make a GL string for the donor typing.
+   left_join(Sample, join_by(PatientId)) %>% # Join the recipient's SAB samples to the table.
+   filter(str_detect(GLstring_donor, SAB_spec_regex))  # Filter for DSAs by keeping only the beads that match the donor's typing.
+   )
+```
+
+<!--
+Below is text that will go towards the top of the report. Note that code snippets (e.g. `r Sys.Date()`) can be used here, outside of a formal code chunk. This is useful for pulling in elements from your computed data, like recipient and donor names.
+
+Those of you familiar with HTML may notice that this green text here is inside of comment notation. I'm using it here because Quarto will interpret this HTML code as a comment, and will not print it on the final report (even though the final report is a PDF)!
+-->
+
+## Report date: `r Sys.Date()` &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  
+**Patient:** `r Case$lastnm.recipient`, `r Case$firstnm.recipient`  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    
+**Donor:** `r Case$lastnm.donor`, `r Case$firstnm.donor` &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+
+```{r}
+#| echo: false
+
+#Graph the DSAs
+ggplot(DSA_table, aes(x = SampleDt, y = SingleAgNormalized, color = SingleAgSpecAbbr)) + # Setting up a graph, and telling ggplot which columns from the table go on the X and y axes, and which column contains data we'd like to be grouped and shown in different colors.
+  geom_point() + # Making this graph a dot plot.
+  stat_summary(aes(y = SingleAgNormalized), fun=mean, geom="line") + # Making lines that connect the dots, and making that line the mean of any DSA that is represented by more than one bead.
+  geom_hline(yintercept = 1000) + # Telling it to make a line at 1,000 MFI, to indicate the cutoff for our assay.
+  labs(x = "Sample date", y = "MFI", title = "DSAs", color = "DSA specificities") + # Making the labels for our graph.
+  theme_bw() # Choosing a nice-looking theme for the graph.
 ```
 
 ```{r}
@@ -94,5 +146,3 @@ kbl(typing_report, booktabs = TRUE, caption = " Serologic Typing", col.names = c
 # It's always a good idea to close the connection to the database when you're done.
 dbDisconnect(con)
 ```
-
-
