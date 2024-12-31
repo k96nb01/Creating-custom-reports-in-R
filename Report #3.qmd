@@ -12,9 +12,6 @@ format:
       - top=1in
       - left=1in
       - right=1in
-    mainfont: "Calibri"
-    sansfont: "Calibri"
-    monofont: "LucidaConsole"
     fontsize: 11pt
 ---
 
