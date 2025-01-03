@@ -129,7 +129,7 @@ Patient_Id <- Patient_for_report$PatientId
 <!--
 Below is text that will go towards the top of the report. Note that code snippets (e.g. `r Sys.Date()`) can be used here, outside of a formal code chunk. This is useful for pulling in elements from your computed data, like recipient and donor names.
 
-Those of you familiar with HTML may notice that this green text here is inside of comment notation. I'm using it here because Quarto will interpret this HTML code as a comment, and will not print it on the final report (even though the final report is a PDF)!
+Those of you familiar with HTML may notice that this green text here is inside of comment notation. I'm using it here because Quarto will interpret this HTML code as a comment, and will not print it on the final report (even though the final report is a PDF, not HTML!).
 -->
 
 ## Report date: `r Sys.Date()` &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  

@@ -5,8 +5,6 @@ params:
   MRN_patient: "7487648492"
 ---
 
-## HLA Typing
-
 ```{r}
 #| include: false 
 #| eval: false
@@ -79,6 +77,8 @@ MRN_patient <- params$MRN_patient
     mutate(across(A:DQ, ~replace_na(., ""))) # replace the missing "NA" values with blank values so it looks nice on the report.
     )
 ```
+
+## HLA Typing
 
 ```{r}
 #| echo: false
